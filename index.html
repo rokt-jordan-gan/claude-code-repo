@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Rokt selectPlacements test page</title>
+<title>Rokt SDK+ selectPlacements test page</title>
 <style>
   :root {
     --bg: #f6f7f9;
@@ -12,8 +12,6 @@
     --muted: #5c6470;
     --line: #dfe3e8;
     --accent: #7b2ff7;
-    --ok: #0a7d38;
-    --err: #b3261e;
   }
   * { box-sizing: border-box; }
   body {
@@ -22,7 +20,7 @@
     color: var(--ink);
     font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 64px; }
   h1 { font-size: 22px; margin: 0 0 4px; }
   .sub { color: var(--muted); margin: 0 0 24px; }
   .card {
@@ -32,7 +30,7 @@
     padding: 20px;
     margin-bottom: 20px;
   }
-  .card h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 16px; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 16px; }
   label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
   .field { margin-bottom: 14px; }
   input[type="text"] {
@@ -45,8 +43,9 @@
     background: #fff;
     color: var(--ink);
   }
+  input:disabled { background: #f1f2f4; color: var(--muted); }
   .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
-  .check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
   button {
     appearance: none;
     border: 0;
@@ -81,39 +80,45 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Rokt <code>selectPlacements</code> test page</h1>
-  <p class="sub">Dummy confirmation page for firing a single Web SDK placement call.</p>
+  <h1>Rokt SDK+ <code>selectPlacements</code> test page</h1>
+  <p class="sub">Dummy confirmation page that initializes the Rokt Ecommerce Web SDK and fires one placement call.</p>
 
   <div class="card">
-    <h2>Call configuration</h2>
+    <h2>Init &amp; call configuration</h2>
 
     <div class="field">
-      <label for="accountId">Account ID / API key (passed as <code>accountId</code> to <code>createLauncher</code>)</label>
-      <input type="text" id="accountId" value="us2-5d8607c00a70614ea6d1e01686ee528d" spellcheck="false" />
+      <label for="apiKey">JS Web API key (<code>API_KEY</code> passed to the SDK+ loader)</label>
+      <input type="text" id="apiKey" value="us2-5d8607c00a70614ea6d1e01686ee528d" spellcheck="false" />
     </div>
 
     <div class="field">
-      <label for="identifier">Page identifier (passed as <code>identifier</code> to <code>selectPlacements</code>)</label>
+      <label for="roktDomain">Rokt domain (swap for your first-party subdomain if configured)</label>
+      <input type="text" id="roktDomain" value="https://apps.rokt-api.com" spellcheck="false" />
+    </div>
+
+    <div class="field">
+      <label for="identifier">Page identifier (<code>identifier</code> in <code>selectPlacements</code>)</label>
       <input type="text" id="identifier" value="testsurvey.stg.rokt.conf" spellcheck="false" />
     </div>
 
     <div class="field">
-      <label for="email">Attribute: <code>email</code></label>
+      <label for="email">Attribute: <code>email</code> (also sent as the identity at init)</label>
       <input type="text" id="email" value="jordan.rokt5@gmail.com" spellcheck="false" />
     </div>
 
     <div class="row">
       <button id="run">Run selectPlacements</button>
       <button id="clear" class="secondary">Clear log</button>
-      <label class="check"><input type="checkbox" id="sandbox" /> sandbox mode</label>
+      <label class="check"><input type="checkbox" id="devMode" checked /> isDevelopmentMode</label>
+      <label class="check"><input type="checkbox" id="tyj" /> use("ThankYouPageJourney")</label>
       <label class="check"><input type="checkbox" id="autorun" /> auto-run on load</label>
     </div>
 
     <p class="hint">
-      Every field can be overridden by query string, e.g.
-      <code>?email=someone@example.com&amp;identifier=testsurvey.stg.rokt.conf&amp;sandbox=1&amp;autorun=1</code>.
-      <code>sandbox: true</code> points the SDK at <code>apps-demo.rokt.com</code> instead of production —
-      leave it off unless Rokt told you to use the demo environment.
+      The SDK initializes on the first run, using whatever is in the fields at that moment; the API key,
+      domain, dev-mode and identity are then locked in — reload the page to change them.
+      Everything is overridable by query string, e.g.
+      <code>?email=someone@example.com&amp;identifier=testsurvey.stg.rokt.conf&amp;dev=0&amp;autorun=1</code>.
     </p>
   </div>
 
@@ -132,112 +137,129 @@
 </div>
 
 <script>
-  // --- Load the Rokt Web SDK launcher -------------------------------------
-  (function () {
-    var target = document.head || document.body;
-    var script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = 'https://apps.rokt.com/wsdk/integrations/launcher.js';
-    script.fetchPriority = 'high';
-    script.crossOrigin = 'anonymous';
-    script.async = true;
-    script.id = 'rokt-launcher';
-    script.addEventListener('load', function () {
-      log('launcher.js loaded', 'ok');
-    });
-    script.addEventListener('error', function () {
-      window.__roktLauncherFailed = true;
-      log('launcher.js FAILED to load — check network/ad blockers', 'err');
-    });
-    target.appendChild(script);
-  })();
+  // ---------------------------------------------------------------------------
+  // Rokt Ecommerce Web SDK (SDK+) test harness.
+  // Init snippet is the one from
+  // https://docs.rokt.com/integration-guides/ecommerce/sdk/web/#initialize
+  // wrapped in a function so the page can init on demand with the form values.
+  // ---------------------------------------------------------------------------
 
-  // --- Helpers ------------------------------------------------------------
   var logEl = document.getElementById('log');
 
   function log(msg, cls) {
     var line = document.createElement('div');
     if (cls) line.className = cls;
-    var t = new Date().toISOString().substr(11, 12);
-    line.textContent = '[' + t + '] ' + msg;
+    line.textContent = '[' + new Date().toISOString().substr(11, 12) + '] ' + msg;
     logEl.appendChild(line);
     logEl.scrollTop = logEl.scrollHeight;
-    // Mirror to devtools so the whole run is visible in one place.
     console.log('[rokt-test]', msg);
   }
 
-  function params() {
-    return new URLSearchParams(window.location.search);
-  }
+  function val(id) { return document.getElementById(id).value.trim(); }
+  function checked(id) { return document.getElementById(id).checked; }
 
   function applyQueryOverrides() {
-    var q = params();
-    ['accountId', 'identifier', 'email'].forEach(function (key) {
+    var q = new URLSearchParams(window.location.search);
+    ['apiKey', 'roktDomain', 'identifier', 'email'].forEach(function (key) {
       var v = q.get(key);
       if (v !== null) document.getElementById(key).value = v;
     });
-    if (q.get('sandbox') === '1' || q.get('sandbox') === 'true') {
-      document.getElementById('sandbox').checked = true;
-    }
-    if (q.get('autorun') === '1' || q.get('autorun') === 'true') {
-      document.getElementById('autorun').checked = true;
-    }
-  }
-
-  function waitForLauncher(timeoutMs) {
-    return new Promise(function (resolve, reject) {
-      var started = Date.now();
-      (function poll() {
-        if (window.Rokt && typeof window.Rokt.createLauncher === 'function') return resolve();
-        if (window.__roktLauncherFailed) {
-          return reject(new Error('launcher.js did not load — window.Rokt is unavailable'));
-        }
-        if (Date.now() - started > timeoutMs) {
-          return reject(new Error('window.Rokt.createLauncher not available after ' + timeoutMs + 'ms'));
-        }
-        setTimeout(poll, 50);
-      })();
+    var flags = { dev: 'devMode', tyj: 'tyj', autorun: 'autorun' };
+    Object.keys(flags).forEach(function (param) {
+      var v = q.get(param);
+      if (v !== null) {
+        document.getElementById(flags[param]).checked = (v === '1' || v === 'true');
+      }
     });
   }
 
-  // --- The actual call ----------------------------------------------------
-  var launcher = null;
-  var launcherKey = null; // accountId + sandbox the current launcher was built with
+  // --- SDK+ initialization (docs snippet, parameterized) ---------------------
+  var initialized = false;
 
+  function initRoktSdk(apiKey, roktDomain, email, isDevelopmentMode) {
+    var API_KEY = apiKey;
+    var ROKT_DOMAIN = roktDomain || 'https://apps.rokt-api.com';
+
+    window.mParticle = {
+      config: {
+        // true = Development data environment, false = Production.
+        isDevelopmentMode: isDevelopmentMode,
+        // Only email is in scope for this test; the SDK accepts null when unknown.
+        identifyRequest: {
+          userIdentities: {
+            email: email || null
+          }
+        },
+        identityCallback: function (result) {
+          if (result && result.getUser && result.getUser()) {
+            log('identity resolved (mpid ' + result.getUser().getMPID() + ')', 'ok');
+          } else {
+            log('identityCallback fired without a user', 'dim');
+          }
+        }
+      }
+    };
+
+    // Load the SDK+
+    (function(e) { window.mParticle = window.mParticle || {}; window.mParticle.EventType = { Unknown: 0, Navigation: 1, Location: 2, Search: 3, Transaction: 4, UserContent: 5, UserPreference: 6, Social: 7, Other: 8, Media: 9 }; window.mParticle.eCommerce = { Cart: {} }; window.mParticle.Identity = {}; window.mParticle.Rokt = {}; window.mParticle.config = window.mParticle.config || {}; window.mParticle.config.rq = []; window.mParticle.config.snippetVersion = 2.8; window.mParticle.ready = function(e) { window.mParticle.config.rq.push(e); }; ["endSession", "logError", "logBaseEvent", "logEvent", "logForm", "logLink", "logPageView", "setSessionAttribute", "setAppName", "setAppVersion", "setOptOut", "setPosition", "startNewSession", "startTrackingLocation", "stopTrackingLocation"].forEach(function(e) { window.mParticle[e] = function() { var t = Array.prototype.slice.call(arguments); t.unshift(e); window.mParticle.config.rq.push(t); }; }); ["setCurrencyCode", "logCheckout"].forEach(function(e) { window.mParticle.eCommerce[e] = function() { var t = Array.prototype.slice.call(arguments); t.unshift("eCommerce." + e); window.mParticle.config.rq.push(t); }; }); ["identify", "login", "logout", "modify"].forEach(function(e) { window.mParticle.Identity[e] = function() { var t = Array.prototype.slice.call(arguments); t.unshift("Identity." + e); window.mParticle.config.rq.push(t); }; }); ["selectPlacements","hashAttributes","hashSha256","setExtensionData","use","getVersion","terminate","onShoppableAdsReady"].forEach(function(e) { window.mParticle.Rokt[e] = function() { var t = Array.prototype.slice.call(arguments); t.unshift("Rokt." + e); window.mParticle.config.rq.push(t); }; }); var t = window.mParticle.config.isDevelopmentMode ? 1 : 0, n = "?env=" + t, a = window.mParticle.config.dataPlan; if (a) { var o = a.planId, r = a.planVersion; o && (r && (r < 1 || r > 1e3) && (r = null), n += "&plan_id=" + o + (r ? "&plan_version=" + r : "")); } var i = window.mParticle.config.versions, s = []; i && Object.keys(i).forEach(function(e) { s.push(e + "=" + i[e]); }); var c = document.createElement("script"); c.type = "text/javascript"; c.async = !0; window.ROKT_DOMAIN = ROKT_DOMAIN || 'https://apps.rokt-api.com'; mParticle.config.domain = ROKT_DOMAIN.split('//')[1]; c.src = ROKT_DOMAIN + "/js/v2/" + e + "/app.js" + n + "&" + s.join("&"); c.onerror = function() { var u = ["https://apps.","rokt","ecommerce",".com"].join(""); window.ROKT_DOMAIN = u; mParticle.config.domain = u.split("//")[1]; var d = document.createElement("script"); d.type = "text/javascript"; d.async = !0; d.src = u + "/js/v2/" + e + "/app.js" + n + "&" + s.join("&"); var f = document.getElementsByTagName("script")[0]; f.parentNode.insertBefore(d, f); }; var l = document.getElementsByTagName("script")[0]; l.parentNode.insertBefore(c, l); })(API_KEY);
+
+    initialized = true;
+    ['apiKey', 'roktDomain', 'devMode'].forEach(function (id) {
+      document.getElementById(id).disabled = true;
+    });
+    log('SDK+ loading from ' + ROKT_DOMAIN + '/js/v2/' + API_KEY + '/app.js (env=' +
+        (isDevelopmentMode ? 1 : 0) + ')');
+  }
+
+  // mParticle.ready() only fires once the SDK bundle has actually loaded.
+  function whenReady(timeoutMs) {
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      window.mParticle.ready(function () {
+        settled = true;
+        resolve();
+      });
+      setTimeout(function () {
+        if (!settled) {
+          reject(new Error('SDK did not become ready within ' + timeoutMs +
+                           'ms — check the API key, the domain, and ad blockers'));
+        }
+      }, timeoutMs);
+    });
+  }
+
+  // --- The call --------------------------------------------------------------
   async function run() {
     var btn = document.getElementById('run');
     btn.disabled = true;
     try {
-      var accountId = document.getElementById('accountId').value.trim();
-      var identifier = document.getElementById('identifier').value.trim();
-      var email = document.getElementById('email').value.trim();
-      var sandbox = document.getElementById('sandbox').checked;
+      var apiKey = val('apiKey');
+      var identifier = val('identifier');
+      var email = val('email');
 
-      if (!accountId) throw new Error('accountId is required');
+      if (!apiKey) throw new Error('API key is required');
 
-      log('waiting for window.Rokt…', 'dim');
-      await waitForLauncher(15000);
+      if (!initialized) {
+        initRoktSdk(apiKey, val('roktDomain'), email, checked('devMode'));
+        log('waiting for mParticle.ready()…', 'dim');
+        await whenReady(20000);
+        log('SDK ready (v' + (window.mParticle.getVersion ? window.mParticle.getVersion() : '?') + ')', 'ok');
+      }
 
-      var key = accountId + '|' + sandbox;
-      if (!launcher || launcherKey !== key) {
-        log('createLauncher({ accountId: "' + accountId + '"' + (sandbox ? ', sandbox: true' : '') + ' })');
-        launcher = await window.Rokt.createLauncher(
-          sandbox ? { accountId: accountId, sandbox: true } : { accountId: accountId }
-        );
-        launcherKey = key;
-        log('launcher created', 'ok');
+      if (checked('tyj')) {
+        log('Rokt.use("ThankYouPageJourney")');
+        await window.mParticle.Rokt.use('ThankYouPageJourney');
       }
 
       var payload = { identifier: identifier, attributes: { email: email } };
-      log('selectPlacements(' + JSON.stringify(payload) + ')');
+      log('Rokt.selectPlacements(' + JSON.stringify(payload) + ')');
 
-      var selection = await launcher.selectPlacements(payload);
+      var selection = await window.mParticle.Rokt.selectPlacements(payload);
       log('selectPlacements resolved', 'ok');
-
       if (selection && selection.context) {
         log('selection.context: ' + JSON.stringify(selection.context), 'dim');
       }
-      window.roktSelection = selection; // poke at it from the console if needed
+      window.roktSelection = selection;
       log('selection object available as window.roktSelection', 'dim');
     } catch (err) {
       log('ERROR: ' + (err && err.message ? err.message : String(err)), 'err');
@@ -247,7 +269,7 @@
     }
   }
 
-  // --- Wire up ------------------------------------------------------------
+  // --- Wire up ---------------------------------------------------------------
   applyQueryOverrides();
   document.getElementById('run').addEventListener('click', run);
   document.getElementById('clear').addEventListener('click', function () {
@@ -255,7 +277,7 @@
   });
 
   log('page ready — press "Run selectPlacements"', 'dim');
-  if (document.getElementById('autorun').checked) {
+  if (checked('autorun')) {
     log('autorun enabled', 'dim');
     run();
   }
