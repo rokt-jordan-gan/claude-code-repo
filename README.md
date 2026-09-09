@@ -68,12 +68,12 @@ the page can initialize on the first run using whatever is in the form fields.
 - **`use("ThankYouPageJourney")`** is off by default — it's only needed for the Thank
   You Page Journey / shoppable-ads flow, not for a plain confirmation placement. The
   checkbox is there if the page under test needs it.
-- **Embedded placements** render into `<div id="rokt-placeholder">`. If the placement
-  is configured with a different placeholder id, rename that div to match. Overlays
-  ignore it.
-- **Domain allow-listing.** Whether `localhost` will serve placements is account/config
-  dependent. If the call resolves but nothing renders, that's the first thing to check
-  with the Rokt team — or host the page on an allow-listed staging domain.
-- **First-party domain.** If the account uses a first-party subdomain (e.g.
-  `rkt.example.com`), put it in the Rokt domain field instead of `apps.rokt-api.com`.
+- **Embedded placements** render into `<div id="rokt-confirmation-placeholder">`, matching
+  the placeholder configured on this page. Overlay placements render over the page and
+  ignore that container; this page is expected to serve both.
+- **Domain.** Intended to be run from `localhost`. If the call resolves but nothing
+  renders, check with the Rokt team whether the account restricts placements to
+  allow-listed domains.
+- **First-party domain.** Not in use here — the Rokt domain stays `apps.rokt-api.com`.
+  If a first-party subdomain is added later, put it in the Rokt domain field instead.
 - **Ad blockers** will block `app.js`; the log will show the SDK never becoming ready.
