@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rokt selectPlacements test page</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --ink: #14161a;
+    --muted: #5c6470;
+    --line: #dfe3e8;
+    --accent: #7b2ff7;
+    --ok: #0a7d38;
+    --err: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .card h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 16px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .field { margin-bottom: 14px; }
+  input[type="text"] {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font: inherit;
+    font-size: 14px;
+    background: #fff;
+    color: var(--ink);
+  }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); }
+  button {
+    appearance: none;
+    border: 0;
+    border-radius: 6px;
+    padding: 10px 18px;
+    font: inherit;
+    font-weight: 600;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+  }
+  button.secondary { background: #eceef1; color: var(--ink); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  #log {
+    background: #0f1115;
+    color: #d7dae0;
+    border-radius: 8px;
+    padding: 14px;
+    font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 340px;
+    overflow: auto;
+  }
+  #log .ok { color: #7ee2a8; }
+  #log .err { color: #ff9d95; }
+  #log .dim { color: #8b93a1; }
+  .hint { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+  code { background: #eceef1; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  #rokt-placeholder { min-height: 40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Rokt <code>selectPlacements</code> test page</h1>
+  <p class="sub">Dummy confirmation page for firing a single Web SDK placement call.</p>
+
+  <div class="card">
+    <h2>Call configuration</h2>
+
+    <div class="field">
+      <label for="accountId">Account ID / API key (passed as <code>accountId</code> to <code>createLauncher</code>)</label>
+      <input type="text" id="accountId" value="us2-5d8607c00a70614ea6d1e01686ee528d" spellcheck="false" />
+    </div>
+
+    <div class="field">
+      <label for="identifier">Page identifier (passed as <code>identifier</code> to <code>selectPlacements</code>)</label>
+      <input type="text" id="identifier" value="testsurvey.stg.rokt.conf" spellcheck="false" />
+    </div>
+
+    <div class="field">
+      <label for="email">Attribute: <code>email</code></label>
+      <input type="text" id="email" value="jordan.rokt5@gmail.com" spellcheck="false" />
+    </div>
+
+    <div class="row">
+      <button id="run">Run selectPlacements</button>
+      <button id="clear" class="secondary">Clear log</button>
+      <label class="check"><input type="checkbox" id="sandbox" /> sandbox mode</label>
+      <label class="check"><input type="checkbox" id="autorun" /> auto-run on load</label>
+    </div>
+
+    <p class="hint">
+      Every field can be overridden by query string, e.g.
+      <code>?email=someone@example.com&amp;identifier=testsurvey.stg.rokt.conf&amp;sandbox=1&amp;autorun=1</code>.
+      <code>sandbox: true</code> points the SDK at <code>apps-demo.rokt.com</code> instead of production —
+      leave it off unless Rokt told you to use the demo environment.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Embedded placement target</h2>
+    <!-- Embedded (in-page) placements render into a div whose id matches the
+         placeholder configured on the Rokt page. Overlays don't need this. -->
+    <div id="rokt-placeholder"></div>
+    <p class="hint">Overlay placements render over the page and ignore this container.</p>
+  </div>
+
+  <div class="card">
+    <h2>Log</h2>
+    <div id="log"></div>
+  </div>
+</div>
+
+<script>
+  // --- Load the Rokt Web SDK launcher -------------------------------------
+  (function () {
+    var target = document.head || document.body;
+    var script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = 'https://apps.rokt.com/wsdk/integrations/launcher.js';
+    script.fetchPriority = 'high';
+    script.crossOrigin = 'anonymous';
+    script.async = true;
+    script.id = 'rokt-launcher';
+    script.addEventListener('load', function () {
+      log('launcher.js loaded', 'ok');
+    });
+    script.addEventListener('error', function () {
+      window.__roktLauncherFailed = true;
+      log('launcher.js FAILED to load — check network/ad blockers', 'err');
+    });
+    target.appendChild(script);
+  })();
+
+  // --- Helpers ------------------------------------------------------------
+  var logEl = document.getElementById('log');
+
+  function log(msg, cls) {
+    var line = document.createElement('div');
+    if (cls) line.className = cls;
+    var t = new Date().toISOString().substr(11, 12);
+    line.textContent = '[' + t + '] ' + msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+    // Mirror to devtools so the whole run is visible in one place.
+    console.log('[rokt-test]', msg);
+  }
+
+  function params() {
+    return new URLSearchParams(window.location.search);
+  }
+
+  function applyQueryOverrides() {
+    var q = params();
+    ['accountId', 'identifier', 'email'].forEach(function (key) {
+      var v = q.get(key);
+      if (v !== null) document.getElementById(key).value = v;
+    });
+    if (q.get('sandbox') === '1' || q.get('sandbox') === 'true') {
+      document.getElementById('sandbox').checked = true;
+    }
+    if (q.get('autorun') === '1' || q.get('autorun') === 'true') {
+      document.getElementById('autorun').checked = true;
+    }
+  }
+
+  function waitForLauncher(timeoutMs) {
+    return new Promise(function (resolve, reject) {
+      var started = Date.now();
+      (function poll() {
+        if (window.Rokt && typeof window.Rokt.createLauncher === 'function') return resolve();
+        if (window.__roktLauncherFailed) {
+          return reject(new Error('launcher.js did not load — window.Rokt is unavailable'));
+        }
+        if (Date.now() - started > timeoutMs) {
+          return reject(new Error('window.Rokt.createLauncher not available after ' + timeoutMs + 'ms'));
+        }
+        setTimeout(poll, 50);
+      })();
+    });
+  }
+
+  // --- The actual call ----------------------------------------------------
+  var launcher = null;
+  var launcherKey = null; // accountId + sandbox the current launcher was built with
+
+  async function run() {
+    var btn = document.getElementById('run');
+    btn.disabled = true;
+    try {
+      var accountId = document.getElementById('accountId').value.trim();
+      var identifier = document.getElementById('identifier').value.trim();
+      var email = document.getElementById('email').value.trim();
+      var sandbox = document.getElementById('sandbox').checked;
+
+      if (!accountId) throw new Error('accountId is required');
+
+      log('waiting for window.Rokt…', 'dim');
+      await waitForLauncher(15000);
+
+      var key = accountId + '|' + sandbox;
+      if (!launcher || launcherKey !== key) {
+        log('createLauncher({ accountId: "' + accountId + '"' + (sandbox ? ', sandbox: true' : '') + ' })');
+        launcher = await window.Rokt.createLauncher(
+          sandbox ? { accountId: accountId, sandbox: true } : { accountId: accountId }
+        );
+        launcherKey = key;
+        log('launcher created', 'ok');
+      }
+
+      var payload = { identifier: identifier, attributes: { email: email } };
+      log('selectPlacements(' + JSON.stringify(payload) + ')');
+
+      var selection = await launcher.selectPlacements(payload);
+      log('selectPlacements resolved', 'ok');
+
+      if (selection && selection.context) {
+        log('selection.context: ' + JSON.stringify(selection.context), 'dim');
+      }
+      window.roktSelection = selection; // poke at it from the console if needed
+      log('selection object available as window.roktSelection', 'dim');
+    } catch (err) {
+      log('ERROR: ' + (err && err.message ? err.message : String(err)), 'err');
+      console.error(err);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // --- Wire up ------------------------------------------------------------
+  applyQueryOverrides();
+  document.getElementById('run').addEventListener('click', run);
+  document.getElementById('clear').addEventListener('click', function () {
+    logEl.textContent = '';
+  });
+
+  log('page ready — press "Run selectPlacements"', 'dim');
+  if (document.getElementById('autorun').checked) {
+    log('autorun enabled', 'dim');
+    run();
+  }
+</script>
+</body>
+</html>
