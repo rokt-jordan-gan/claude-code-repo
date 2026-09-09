@@ -106,6 +106,15 @@
       <input type="text" id="email" value="jordan.rokt5@gmail.com" spellcheck="false" />
     </div>
 
+    <div class="field">
+      <label>Attribute: <code>survey</code></label>
+      <div class="row">
+        <label class="check"><input type="radio" name="survey" value="true" checked /> true</label>
+        <label class="check"><input type="radio" name="survey" value="false" /> false</label>
+        <label class="check"><input type="radio" name="survey" value="omit" /> don't send it</label>
+      </div>
+    </div>
+
     <div class="row">
       <button id="run">Run selectPlacements</button>
       <button id="clear" class="secondary">Clear log</button>
@@ -118,7 +127,7 @@
       The SDK initializes on the first run, using whatever is in the fields at that moment; the API key,
       domain, dev-mode and identity are then locked in — reload the page to change them.
       Everything is overridable by query string, e.g.
-      <code>?email=someone@example.com&amp;identifier=testsurvey.stg.rokt.conf&amp;dev=0&amp;autorun=1</code>.
+      <code>?email=someone@example.com&amp;identifier=testsurvey.stg.rokt.conf&amp;survey=false&amp;dev=0&amp;autorun=1</code>.
     </p>
   </div>
 
@@ -158,6 +167,11 @@
   function val(id) { return document.getElementById(id).value.trim(); }
   function checked(id) { return document.getElementById(id).checked; }
 
+  // "true" | "false" | "omit"
+  function surveyChoice() {
+    return document.querySelector('input[name="survey"]:checked').value;
+  }
+
   function applyQueryOverrides() {
     var q = new URLSearchParams(window.location.search);
     ['apiKey', 'roktDomain', 'identifier', 'email'].forEach(function (key) {
@@ -171,6 +185,14 @@
         document.getElementById(flags[param]).checked = (v === '1' || v === 'true');
       }
     });
+
+    var survey = q.get('survey');
+    if (survey !== null) {
+      var choice = (survey === 'omit' || survey === 'none') ? 'omit'
+                 : (survey === '0' || survey === 'false') ? 'false'
+                 : 'true';
+      document.querySelector('input[name="survey"][value="' + choice + '"]').checked = true;
+    }
   }
 
   // --- SDK+ initialization (docs snippet, parameterized) ---------------------
@@ -251,7 +273,12 @@
         await window.mParticle.Rokt.use('ThankYouPageJourney');
       }
 
-      var payload = { identifier: identifier, attributes: { email: email } };
+      var attributes = { email: email };
+      // Rokt attribute values are sent as strings, so "true"/"false", not booleans.
+      var survey = surveyChoice();
+      if (survey !== 'omit') attributes.survey = survey;
+
+      var payload = { identifier: identifier, attributes: attributes };
       log('Rokt.selectPlacements(' + JSON.stringify(payload) + ')');
 
       var selection = await window.mParticle.Rokt.selectPlacements(payload);

@@ -12,9 +12,30 @@ Pre-filled values:
 | Rokt domain | `https://apps.rokt-api.com` |
 | `identifier` | `testsurvey.stg.rokt.conf` |
 | `attributes.email` | `jordan.rokt5@gmail.com` |
+| `attributes.survey` | `"true"` (toggleable to `"false"`, or omitted) |
 | `isDevelopmentMode` | `true` |
 
-## Run it
+## Run it — hosted
+
+The repo is public and this branch is the default branch, so GitHub Pages can serve it
+as a real URL. In **Settings → Pages**, set Source to *Deploy from a branch*, pick this
+branch and the `/ (root)` folder, and save. The page then lives at:
+
+```
+https://rokt-jordan-gan.github.io/claude-code-repo/
+```
+
+Query-string overrides work the same way there:
+
+```
+https://rokt-jordan-gan.github.io/claude-code-repo/?survey=false&autorun=1
+```
+
+Note this puts the JS Web API key on a public URL. That key is public by nature — it ships
+in client-side JS on any site using the SDK — but it is a real key, so rotate it or make
+the repo private if that matters for this account.
+
+## Run it — locally
 
 Serve over HTTP — don't open it with `file://`, the SDK needs a real origin:
 
@@ -32,7 +53,8 @@ Query-string overrides:
 http://localhost:8000/?email=someone@example.com&identifier=testsurvey.stg.rokt.conf&dev=0&autorun=1
 ```
 
-Supported params: `apiKey`, `roktDomain`, `identifier`, `email`, `dev`, `tyj`, `autorun`.
+Supported params: `apiKey`, `roktDomain`, `identifier`, `email`, `survey`, `dev`, `tyj`,
+`autorun`. `survey` accepts `true` / `false` / `omit`.
 
 ## What the page does
 
@@ -49,6 +71,7 @@ const selection = await mParticle.Rokt.selectPlacements({
   identifier: 'testsurvey.stg.rokt.conf',
   attributes: {
     email: 'jordan.rokt5@gmail.com',
+    survey: 'true', // radio: "true" | "false" | not sent at all
   },
 });
 ```
@@ -62,6 +85,9 @@ the page can initialize on the first run using whatever is in the form fields.
   email are locked in when the SDK loads (those fields disable themselves after the
   first run). Reload the page to change them. The `identifier` and the email sent as
   a `selectPlacements` attribute can be changed between runs.
+- **`survey` is sent as a string**, `"true"` or `"false"` — Rokt attribute values are
+  strings, not JSON booleans. The third radio option leaves the attribute out entirely,
+  which is a different case from sending `"false"`.
 - **`isDevelopmentMode`** routes data to the Development environment (`env=1` on the
   `app.js` URL). Leave it on while testing `.stg.` identifiers; turn it off for
   production data.
